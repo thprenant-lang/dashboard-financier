@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Financier — Sérénité</title>
+    <style>
+        :root {
+            --bg-color: #f7f5f0;
+            --card-bg: rgba(255, 255, 255, 0.88);
+            --primary: #2c3e50;
+            --secondary: #8c2727; 
+            --accent: #2980b9;
+            --success: #27ae60;
+            --danger: #c0392b;
+            --border: #e6dfd3;
+            --text: #2c3e50;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: url('https://images.unsplash.com/photo-1503899036084-c55cdd92da26?q=80&w=1920&auto=format&fit=crop') no-repeat center center fixed; 
+            background-size: cover; 
+            color: var(--text); 
+            max-width: 1100px; 
+            margin: 30px auto; 
+            padding: 20px; 
+            line-height: 1.5; 
+        }
+
+        body::before { content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(247, 245, 240, 0.85); backdrop-filter: blur(4px); z-index: -1; }
+        
+        .header { background: linear-gradient(135deg, #2c3e50, #34495e); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 25px; border-bottom: 4px solid var(--secondary); }
+        .card { background: var(--card-bg); backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        h3 { color: var(--primary); margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 10px; font-size: 1.2em; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background-color: rgba(230, 223, 211, 0.5); color: var(--primary); padding: 12px; font-size: 0.8em; text-transform: uppercase; }
+        td { padding: 10px; border-bottom: 1px solid var(--border); text-align: center; }
+        
+        .input-field { width: 80px; padding: 7px; text-align: center; border: 1px solid var(--border); border-radius: 6px; background: #ffffff; }
+        .input-text { width: 90%; padding: 7px; border: 1px solid var(--border); border-radius: 6px; background: #ffffff; }
+        
+        .alert { color: var(--danger); font-weight: 600; }
+        .positive { color: var(--success); font-weight: 600; }
+        .suggestion { color: var(--accent); font-weight: bold; font-size: 0.9em; }
+        
+        .btn { background-color: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+        .btn-danger { background-color: var(--secondary); }
+        
+        .progress-bar-bg { background: var(--border); border-radius: 10px; height: 25px; width: 100%; margin: 12px 0; overflow: hidden; }
+        .progress-bar-fill { background: var(--success); height: 100%; width: 0%; transition: width 0.4s ease; text-align: center; color: white; font-weight: bold; line-height: 25px; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="header"><h1>Dashboard Financier — Sérénité</h1></div>
+
+    <div class="card">
+        <h3>1. Charges Fixes (Total : <strong id="totalChargesHeader">0,00</strong> €)</h3>
+        <table>
+            <thead><tr><th>Poste</th><th>Montant (€)</th><th>Précisions</th><th>Action</th></tr></thead>
+            <tbody id="chargesTableBody"></tbody>
+        </table>
+        <button class="btn" style="margin-top: 15px;" onclick="addChargeRow()">+ Ajouter une charge</button>
+    </div>
+
+    <div class="card">
+        <h3>2. Objectif Épargne</h3>
+        <p>Épargne totale : <strong id="totalSaved">0,00 €</strong> / Objectif : 
+           <input type="number" id="targetGoalInput" class="input-field" value="10000" oninput="refreshCalculations()"> €</p>
+        <div class="progress-bar-bg"><div id="progressBar" class="progress-bar-fill">0%</div></div>
+    </div>
+
+    <div class="card">
+        <h3>3. Prévisionnel 12 Mois</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Mois</th><th>Salaire (€)</th><th>Épargne Réelle (€)</th><th>Capacité Conseillée (20%)</th><th>Reste à vivre net (€)</th>
+                </tr>
+            </thead>
+            <tbody id="forecastTable"></tbody>
+        </table>
+    </div>
+
+    <script>
+        let chargesData = [{ name: "Loyer", amount: 0, desc: "" }];
+        const monthsData = ["Août", "Septembre", "Octobre", "Novembre", "Décembre", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet"].map(m => ({ name: m, salary: 0, saved: 0 }));
+
+        function refreshCalculations() {
+            const totalCharges = chargesData.reduce((sum, item) => sum + item.amount, 0);
+            document.getElementById('totalChargesHeader').innerText = totalCharges.toFixed(2);
+
+            let totalSaved = 0;
+            monthsData.forEach((m, i) => {
+                const resteBrut = m.salary - totalCharges;
+                const capaciteConseillee = resteBrut > 0 ? (resteBrut * 0.20) : 0;
+                const netLiving = resteBrut - m.saved;
+                totalSaved += m.saved;
+
+                const conseilCell = document.getElementById(`conseil-${i}`);
+                if (conseilCell) conseilCell.innerText = capaciteConseillee.toFixed(2) + " €";
+
+                const cell = document.getElementById(`reste-${i}`);
+                if (cell) {
+                    cell.innerText = netLiving.toFixed(2) + " €";
+                    cell.className = netLiving < 0 ? 'alert' : 'positive';
+                }
+            });
+
+            const target = parseFloat(document.getElementById('targetGoalInput').value) || 1;
+            const pct = Math.min((totalSaved / target) * 100, 100);
+            document.getElementById('totalSaved').innerText = totalSaved.toFixed(2) + " €";
+            const bar = document.getElementById('progressBar');
+            bar.style.width = pct + "%";
+            bar.innerText = pct.toFixed(0) + "%";
+        }
+
+        function renderAll() {
+            const tbodyCharges = document.getElementById('chargesTableBody');
+            tbodyCharges.innerHTML = '';
+            chargesData.forEach((c, i) => {
+                tbodyCharges.innerHTML += `<tr>
+                    <td><input class="input-text" value="${c.name}" oninput="chargesData[${i}].name=this.value"></td>
+                    <td><input type="number" class="input-field" value="${c.amount}" oninput="chargesData[${i}].amount=parseFloat(this.value)||0; refreshCalculations()"></td>
+                    <td><input class="input-text" value="${c.desc}" oninput="chargesData[${i}].desc=this.value"></td>
+                    <td><button class="btn btn-danger" onclick="chargesData.splice(${i},1); renderAll()">Supprimer</button></td>
+                </tr>`;
+            });
+
+            const tbodyForecast = document.getElementById('forecastTable');
+            tbodyForecast.innerHTML = '';
+            monthsData.forEach((m, i) => {
+                tbodyForecast.innerHTML += `<tr>
+                    <td><strong>${m.name}</strong></td>
+                    <td><input type="number" class="input-field" value="${m.salary}" oninput="monthsData[${i}].salary=parseFloat(this.value)||0; refreshCalculations()"></td>
+                    <td><input type="number" class="input-field" value="${m.saved}" oninput="monthsData[${i}].saved=parseFloat(this.value)||0; refreshCalculations()"></td>
+                    <td id="conseil-${i}" class="suggestion">0,00 €</td>
+                    <td id="reste-${i}">0,00 €</td>
+                </tr>`;
+            });
+            refreshCalculations();
+        }
+
+        addChargeRow = () => { chargesData.push({ name: "Nouveau", amount: 0, desc: "" }); renderAll(); }
+        renderAll();
+    </script>
+</body>
+</html>
